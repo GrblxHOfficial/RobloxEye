@@ -35,7 +35,7 @@ local function ScanFunction(func : () -> (), value : any)
 		ScanTable(debug.getupvalues(func), value)
 end
 
-local function ScanInternal(list : {any}, value : any, lookInTables : boolean) : {}
+local function ScanInternal(list : {any}, value : any) : {}
 	local results = {}
 	
 	for _, v in pairs(list) do
@@ -50,7 +50,7 @@ local function ScanInternal(list : {any}, value : any, lookInTables : boolean) :
 end
 
 function RobloxEye:Scan(value : any) : {() -> ()}
-	return Merge(ScanInternal(getgc(), value, not not lookInTables), ScanInternal(getreg(), value))
+	return Merge(ScanInternal(getgc(), value), ScanInternal(getreg(), value))
 end
 
 function RobloxEye:AddFunctionToBlackList(func : () -> ())
