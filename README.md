@@ -14,4 +14,7 @@ end
 for i, v in pairs(RobloxEye:ScanXrefs("Hello World!")) do
     print("\"Hello World!\" found in", v)
 end
+
+-- // Remove 'testfunction' from scanner
+RobloxEye:AddFunctionToBlackList(testfunction)
 ```
