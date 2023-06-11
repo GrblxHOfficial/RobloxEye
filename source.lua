@@ -3,21 +3,13 @@ local Blacklist = {}
 
 local ScanTable, ScanFunction, ScanInternal
 
-local function Merge(list1 : {any}, list2 : {any})
-	local tbl = {}
-	
-	for i, v in pairs(list1) do
-		table.insert(tbl, v)
-	end
-	
+local function Merge(list1 : {any}, list2 : {any}) : {any}
 	for i, v in pairs(list2) do
-		table.insert(tbl, v)
+		table.insert(list1, v)
 	end
-	
-	return tbl
 end
 
-local function EQ(value1 : any, value2 : any)
+local function EQ(value1 : any, value2 : any) : boolean
 	local type1 = typeof(value1)
 	local type2 = typeof(value2)
 	if type1 ~= type2 then
@@ -41,7 +33,7 @@ local function EQ(value1 : any, value2 : any)
 	return rawequal(value1, value2)
 end
 
-local function ScanTable(list : {any}, value : any)
+local function ScanTable(list : {any}, value : any) : boolean
 	for _, v in pairs(list) do
 		if EQ(v, value) then
 			return true
@@ -50,17 +42,17 @@ local function ScanTable(list : {any}, value : any)
 	return false
 end
 
-local function ScanFunction(func : () -> (), value : any)
+local function ScanFunction(func : () -> (), value : any) : boolean
 	if table.find(Blacklist, func) or iscclosure(func) then 
 		return false 
 	end
 	return 
 		ScanTable(debug.getconstants(func), value) or 
 		ScanTable(debug.getupvalues(func), value) or
-		debug.info(func, "n") == value
+		debug.getinfo(func).name == value
 end
 
-local function ScanInternal(list : {any}, value : any) : {}
+local function ScanInternal(list : {any}, value : any, lookInTables : boolean) : {() -> ()}
 	local results = {}
 	
 	for _, v in pairs(list) do
@@ -68,15 +60,35 @@ local function ScanInternal(list : {any}, value : any) : {}
 			if not table.find(results, v) and ScanFunction(v, value) then
 				table.insert(results, v)
 			end
+		elseif typeof(v) == "table" and lookInTables then
+			if not table.find(results, v) then
+				for i, val in pairs(v) do
+					if EQ(i, value) or EQ(val, value) then
+						table.insert(results, v)
+						break
+					end
+				end
+			end
 		end
 	end
 	
 	return results
 end
 
-function RobloxEye:ScanXrefs(value : any) : {() -> ()}
-	RobloxEye:AddFunctionToBlackList(debug.info(2, "f"))
-	return Merge(ScanInternal(getgc(), value), ScanInternal(getreg(), value))
+function RobloxEye:ScanXrefs(value : any, lookInTables : boolean?) : {() -> ()}
+	lookInTables = not not lookInTables
+	RobloxEye:AddFunctionToBlackList(debug.getinfo(2).func)
+	local results = ScanInternal(getgc(lookInTables), value, lookInTables)
+	Merge(results, ScanInternal(getreg(), value, lookInTables))
+	return results
+end
+
+function RobloxEye:GetBlacklist() : {() -> ()}
+	return Blacklist
+end
+
+function RobloxEye:ClearBlacklist()
+	Blacklist = {}
 end
 
 function RobloxEye:AddFunctionToBlackList(func : () -> ())
