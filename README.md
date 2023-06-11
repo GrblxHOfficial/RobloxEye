@@ -11,7 +11,7 @@ local function testfunction()
 end
 
 -- // Scan for value "Hello World!"
-for i, v in pairs(RobloxEye:Scan("Hello World!")) do
+for i, v in pairs(RobloxEye:ScanXrefs("Hello World!")) do
     print("\"Hello World!\" found in", v)
 end
 ```
