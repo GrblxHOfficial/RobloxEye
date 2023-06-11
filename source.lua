@@ -17,9 +17,33 @@ local function Merge(list1 : {any}, list2 : {any})
 	return tbl
 end
 
+local function EQ(value1 : any, value2 : any)
+	local type1 = typeof(value1)
+	local type2 = typeof(value2)
+	if type1 ~= type2 then
+		return false
+	elseif type1 == "table" then
+		local indexes = {}
+		for i, v in pairs(value1) do
+			indexes[i] = true
+		end
+		for i, v in pairs(value2) do
+			if not value1[i] then
+				return false
+			end
+		end
+		return true
+	elseif type1 == "function" then
+		if islclosure(value1) and islclosure(value2) then
+			return EQ(debug.getconstants(value1), debug.getconstants(value2))
+		end
+	end
+	return rawequal(value1, value2)
+end
+
 local function ScanTable(list : {any}, value : any)
 	for _, v in pairs(list) do
-		if v == value then
+		if EQ(v, value) then
 			return true
 		end
 	end
@@ -32,7 +56,8 @@ local function ScanFunction(func : () -> (), value : any)
 	end
 	return 
 		ScanTable(debug.getconstants(func), value) or 
-		ScanTable(debug.getupvalues(func), value)
+		ScanTable(debug.getupvalues(func), value) or
+		debug.info(func, "n") == value
 end
 
 local function ScanInternal(list : {any}, value : any) : {}
@@ -49,7 +74,8 @@ local function ScanInternal(list : {any}, value : any) : {}
 	return results
 end
 
-function RobloxEye:Scan(value : any) : {() -> ()}
+function RobloxEye:ScanXrefs(value : any) : {() -> ()}
+	RobloxEye:AddFunctionToBlackList(debug.info(2, "f"))
 	return Merge(ScanInternal(getgc(), value), ScanInternal(getreg(), value))
 end
 
